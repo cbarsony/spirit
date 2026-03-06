@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spirit – Todo App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; justify-content: center;
+      min-height: 100vh; background: #f0f4f8; color: #1a202c;
+      padding: 3rem 1rem;
+    }
+    .app { width: 100%; max-width: 480px; }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    .input-row { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
+    .input-row input {
+      flex: 1; padding: .6rem .8rem; font-size: 1rem; border: 2px solid #cbd5e0;
+      border-radius: 8px; outline: none;
+    }
+    .input-row input:focus { border-color: #4299e1; }
+    .input-row button {
+      padding: .6rem 1.2rem; font-size: 1rem; background: #4299e1; color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+    }
+    .input-row button:hover { background: #3182ce; }
+    .filters { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .filters button {
+      padding: .4rem .8rem; font-size: .85rem; border: 2px solid #e2e8f0;
+      border-radius: 8px; background: #fff; cursor: pointer;
+    }
+    .filters button.active { border-color: #4299e1; background: #ebf8ff; color: #2b6cb0; }
+    .stats { font-size: .85rem; color: #718096; margin-bottom: .75rem; }
+    ul { list-style: none; }
+    li {
+      display: flex; align-items: center; gap: .75rem; padding: .65rem .8rem;
+      background: #fff; border-radius: 8px; margin-bottom: .5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    li.done span { text-decoration: line-through; color: #a0aec0; }
+    li input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    li span { flex: 1; font-size: 1rem; }
+    li button {
+      background: none; border: none; color: #e53e3e; cursor: pointer;
+      font-size: 1.1rem; padding: 0 .3rem;
+    }
+    li button:hover { color: #c53030; }
+    .empty { color: #a0aec0; text-align: center; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Spirit Todo</h1>
+
+    <div class="input-row">
+      <input id="newTodo" type="text" placeholder="What needs to be done?" />
+      <button onclick="addTodo()">Add</button>
+    </div>
+
+    <div class="filters">
+      <button onclick="setFilter('all')">All</button>
+      <button onclick="setFilter('active')">Active</button>
+      <button onclick="setFilter('completed')">Completed</button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <ul id="list"></ul>
+  </div>
+
+  <script type="module">
+    import { createAppState } from '../src/spirit.js'
+
+    let nextId = 1
+
+    const app = createAppState({
+      id: 'todo',
+      initial: 'ready',
+      context: {
+        todos: [],
+        filter: 'all',   // 'all' | 'active' | 'completed'
+      },
+      states: {
+        ready: {
+          on: {
+            ADD: {
+              guard: (_ctx, e) => e.text.trim().length > 0,
+              actions: (ctx, e) => {
+                ctx.todos.push({ id: nextId++, text: e.text.trim(), done: false })
+              },
+            },
+            TOGGLE: {
+              actions: (ctx, e) => {
+                const t = ctx.todos.find((t) => t.id === e.id)
+                if (t) t.done = !t.done
+              },
+            },
+            REMOVE: {
+              actions: (ctx, e) => {
+                ctx.todos = ctx.todos.filter((t) => t.id !== e.id)
+              },
+            },
+            FILTER: {
+              actions: (ctx, e) => { ctx.filter = e.filter },
+            },
+          },
+        },
+      },
+    })
+
+    // ---- render subscription ------------------------------------------------
+    app.subscribe((state) => {
+      const { todos, filter } = state.context
+
+      // Stats
+      const done = todos.filter((t) => t.done).length
+      document.getElementById('stats').textContent =
+        `${todos.length} total · ${done} completed · ${todos.length - done} remaining`
+
+      // Filter buttons
+      document.querySelectorAll('.filters button').forEach((btn) => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase() === filter)
+      })
+
+      // List
+      const visible = todos.filter((t) => {
+        if (filter === 'active') return !t.done
+        if (filter === 'completed') return t.done
+        return true
+      })
+
+      const ul = document.getElementById('list')
+      if (visible.length === 0) {
+        ul.innerHTML = '<li class="empty">Nothing here yet.</li>'
+        return
+      }
+
+      ul.innerHTML = visible
+        .map(
+          (t) => `
+          <li class="${t.done ? 'done' : ''}">
+            <input type="checkbox" ${t.done ? 'checked' : ''}
+                   onchange="toggle(${t.id})" />
+            <span>${t.text}</span>
+            <button onclick="remove(${t.id})">✕</button>
+          </li>`,
+        )
+        .join('')
+    })
+
+    app.start()
+
+    // ---- global helpers (used by onclick) -----------------------------------
+    window.app = app
+
+    window.addTodo = () => {
+      const input = document.getElementById('newTodo')
+      app.send({ type: 'ADD', text: input.value })
+      input.value = ''
+      input.focus()
+    }
+
+    window.toggle = (id) => app.send({ type: 'TOGGLE', id })
+    window.remove = (id) => app.send({ type: 'REMOVE', id })
+    window.setFilter = (f) => app.send({ type: 'FILTER', filter: f })
+
+    // Enter key adds todo
+    document.getElementById('newTodo').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addTodo()
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "spirit",
+  "version": "0.1.0",
+  "description": "A lightweight, explicit, vanilla-first state management library combining statecharts with HTML and Web Components.",
+  "type": "module",
+  "main": "src/spirit.js",
+  "exports": {
+    ".": "./src/spirit.js"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --verbose",
+    "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
+    "serve": "npx serve . -p 3000 -C",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "state-machine",
+    "statecharts",
+    "web-components",
+    "vanilla-js",
+    "no-framework",
+    "one-way-binding"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

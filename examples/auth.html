@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spirit – Auth Flow</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; background: #f0f4f8; color: #1a202c;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 2.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08); min-width: 360px;
+    }
+    h1 { font-size: 1.3rem; margin-bottom: 1.5rem; text-align: center; }
+    label { display: block; font-size: .85rem; color: #718096; margin-bottom: .25rem; }
+    input {
+      width: 100%; padding: .55rem .75rem; font-size: 1rem; border: 2px solid #cbd5e0;
+      border-radius: 8px; margin-bottom: .9rem; outline: none;
+    }
+    input:focus { border-color: #4299e1; }
+    button {
+      width: 100%; padding: .65rem; font-size: 1rem; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 600; margin-top: .5rem; transition: background .15s;
+    }
+    .btn-primary { background: #4299e1; color: #fff; }
+    .btn-primary:hover { background: #3182ce; }
+    .btn-danger { background: #fc8181; color: #fff; }
+    .btn-danger:hover { background: #f56565; }
+    .error {
+      background: #fff5f5; color: #c53030; padding: .5rem .75rem;
+      border-radius: 8px; font-size: .9rem; margin-bottom: .75rem;
+    }
+    .welcome { text-align: center; }
+    .welcome .avatar {
+      width: 64px; height: 64px; border-radius: 50%; background: #bee3f8;
+      margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; color: #2b6cb0;
+    }
+    .welcome h2 { font-size: 1.2rem; margin-bottom: .25rem; }
+    .welcome p { color: #718096; margin-bottom: 1.25rem; font-size: .9rem; }
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid #fff;
+      border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* View toggling via [data-view] */
+    [data-view] { display: none; }
+    [data-view].visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Logged-out view -->
+    <div data-view="loggedOut" id="view-loggedOut">
+      <h1>Sign In</h1>
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="alice@example.com" />
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="••••••••" />
+      <div class="error" id="error" style="display:none"></div>
+      <button class="btn-primary" onclick="login()">Sign In</button>
+      <p style="margin-top:.75rem;font-size:.8rem;color:#a0aec0;text-align:center">
+        Hint: use any email &amp; password "secret"
+      </p>
+    </div>
+
+    <!-- Authenticating view -->
+    <div data-view="authenticating" id="view-authenticating">
+      <h1>Signing in…</h1>
+      <p style="text-align:center"><span class="spinner"></span></p>
+    </div>
+
+    <!-- Logged-in view -->
+    <div data-view="loggedIn" id="view-loggedIn">
+      <div class="welcome">
+        <div class="avatar" id="avatar"></div>
+        <h2>Welcome, <span data-model="userName"></span>!</h2>
+        <p data-model="userEmail"></p>
+        <button class="btn-danger" onclick="app.send('LOGOUT')">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createAppState } from '../src/spirit.js'
+
+    const app = createAppState({
+      id: 'auth',
+      initial: 'loggedOut',
+      context: {
+        userName: '',
+        userEmail: '',
+        error: '',
+      },
+      states: {
+        loggedOut: {
+          on: {
+            ATTEMPT_LOGIN: {
+              target: 'authenticating',
+              actions: (ctx) => { ctx.error = '' },
+            },
+          },
+        },
+        authenticating: {
+          on: {
+            SUCCESS: {
+              target: 'loggedIn',
+              actions: (ctx, e) => {
+                ctx.userName = e.name
+                ctx.userEmail = e.email
+              },
+            },
+            FAILURE: {
+              target: 'loggedOut',
+              actions: (ctx, e) => { ctx.error = e.message },
+            },
+          },
+        },
+        loggedIn: {
+          on: {
+            LOGOUT: {
+              target: 'loggedOut',
+              actions: (ctx) => {
+                ctx.userName = ''
+                ctx.userEmail = ''
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // ---- view switching subscription ----------------------------------------
+    app.subscribe((state) => {
+      document.querySelectorAll('[data-view]').forEach((el) => {
+        el.classList.toggle('visible', el.dataset.view === state.value)
+      })
+
+      // Error message
+      const errEl = document.getElementById('error')
+      if (state.context.error) {
+        errEl.textContent = state.context.error
+        errEl.style.display = 'block'
+      } else {
+        errEl.style.display = 'none'
+      }
+
+      // Avatar initial
+      if (state.context.userName) {
+        document.getElementById('avatar').textContent = state.context.userName[0].toUpperCase()
+      }
+    })
+
+    app.start()
+    window.app = app
+
+    // ---- simulated login ----------------------------------------------------
+    window.login = () => {
+      const email = document.getElementById('email').value.trim()
+      const password = document.getElementById('password').value
+
+      if (!email) return
+      app.send('ATTEMPT_LOGIN')
+
+      // Simulate network delay
+      setTimeout(() => {
+        if (password === 'secret') {
+          const name = email.split('@')[0].replace(/^\w/, (c) => c.toUpperCase())
+          app.send({ type: 'SUCCESS', name, email })
+        } else {
+          app.send({ type: 'FAILURE', message: 'Invalid credentials. Use password "secret".' })
+        }
+      }, 1200)
+    }
+
+    // Enter key submits
+    document.getElementById('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') login()
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spirit Examples</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px; margin: 3rem auto; padding: 0 1rem; color: #1a202c;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: .5rem; }
+    p.lead { color: #718096; margin-bottom: 2rem; }
+    .grid { display: grid; gap: 1rem; }
+    a.card {
+      display: block; padding: 1.25rem 1.5rem; background: #fff;
+      border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      text-decoration: none; color: inherit; transition: box-shadow .15s;
+    }
+    a.card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+    a.card h2 { font-size: 1.1rem; margin-bottom: .25rem; }
+    a.card p { font-size: .9rem; color: #718096; }
+    code { background: #edf2f7; padding: .15rem .4rem; border-radius: 4px; font-size: .85em; }
+  </style>
+</head>
+<body>
+  <h1>Spirit Examples</h1>
+  <p class="lead">
+    Working demos of Spirit — a lightweight state management library.<br>
+    View the source of each page to see how it works.
+  </p>
+
+  <div class="grid">
+    <a class="card" href="counter.html">
+      <h2>Counter</h2>
+      <p>Increment, decrement, reset. With a <code>paused</code> state that disables buttons.</p>
+    </a>
+
+    <a class="card" href="todo.html">
+      <h2>Todo App</h2>
+      <p>Full CRUD: add, toggle, remove. Filtering by all / active / completed.</p>
+    </a>
+
+    <a class="card" href="auth.html">
+      <h2>Auth Flow</h2>
+      <p>Login / authenticating / logged-in states with simulated async and error handling.</p>
+    </a>
+
+    <a class="card" href="wizard.html">
+      <h2>Form Wizard</h2>
+      <p>Multi-step signup form with guard-based validation and a progress bar.</p>
+    </a>
+  </div>
+</body>
+</html>

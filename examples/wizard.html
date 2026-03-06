@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spirit – Form Wizard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; background: #f0f4f8; color: #1a202c;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 2.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08); min-width: 400px; max-width: 440px;
+    }
+    h1 { font-size: 1.3rem; margin-bottom: .25rem; }
+    .subtitle { color: #718096; font-size: .85rem; margin-bottom: 1.5rem; }
+
+    /* Progress bar */
+    .progress { display: flex; gap: .35rem; margin-bottom: 1.75rem; }
+    .progress .step {
+      flex: 1; height: 6px; border-radius: 3px; background: #e2e8f0; transition: background .3s;
+    }
+    .progress .step.done { background: #48bb78; }
+    .progress .step.current { background: #4299e1; }
+
+    label { display: block; font-size: .85rem; color: #718096; margin-bottom: .25rem; }
+    input, select {
+      width: 100%; padding: .55rem .75rem; font-size: 1rem; border: 2px solid #cbd5e0;
+      border-radius: 8px; margin-bottom: .9rem; outline: none; background: #fff;
+    }
+    input:focus, select:focus { border-color: #4299e1; }
+    .validation { color: #e53e3e; font-size: .8rem; margin-top: -.6rem; margin-bottom: .6rem; }
+    .buttons { display: flex; gap: .75rem; margin-top: .5rem; }
+    button {
+      flex: 1; padding: .65rem; font-size: 1rem; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 600; transition: background .15s;
+    }
+    .btn-primary { background: #4299e1; color: #fff; }
+    .btn-primary:hover { background: #3182ce; }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; }
+    .btn-secondary:hover { background: #cbd5e0; }
+    .btn-success { background: #48bb78; color: #fff; }
+    .btn-success:hover { background: #38a169; }
+
+    [data-view] { display: none; }
+    [data-view].visible { display: block; }
+
+    .summary dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem .75rem; }
+    .summary dt { font-weight: 600; color: #4a5568; }
+    .summary dd { color: #2d3748; }
+    .check { text-align: center; font-size: 3rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Create Account</h1>
+    <p class="subtitle">Step <span id="stepNum">1</span> of 3</p>
+
+    <div class="progress">
+      <div class="step" id="p1"></div>
+      <div class="step" id="p2"></div>
+      <div class="step" id="p3"></div>
+    </div>
+
+    <!-- Step 1: Personal info -->
+    <div data-view="step1" id="view-step1">
+      <label for="name">Full Name</label>
+      <input id="name" placeholder="Alice Smith" oninput="setField('SET_NAME', 'name', this.value)" />
+      <div class="validation" id="v-name"></div>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="alice@example.com"
+             oninput="setField('SET_EMAIL', 'email', this.value)" />
+      <div class="validation" id="v-email"></div>
+
+      <div class="buttons">
+        <button class="btn-primary" onclick="app.send('NEXT')">Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Choose plan -->
+    <div data-view="step2" id="view-step2">
+      <label for="plan">Select a Plan</label>
+      <select id="plan" onchange="app.send({ type: 'SET_PLAN', plan: this.value })">
+        <option value="">— Choose —</option>
+        <option value="free">Free</option>
+        <option value="pro">Pro ($9/mo)</option>
+        <option value="team">Team ($29/mo)</option>
+      </select>
+      <div class="validation" id="v-plan"></div>
+
+      <div class="buttons">
+        <button class="btn-secondary" onclick="app.send('BACK')">← Back</button>
+        <button class="btn-primary" onclick="app.send('NEXT')">Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Confirmation -->
+    <div data-view="step3" id="view-step3">
+      <p style="margin-bottom:1rem;color:#718096">Review your details:</p>
+      <div class="summary">
+        <dl>
+          <dt>Name</dt>  <dd data-model="name"></dd>
+          <dt>Email</dt> <dd data-model="email"></dd>
+          <dt>Plan</dt>  <dd data-model="plan"></dd>
+        </dl>
+      </div>
+
+      <div class="buttons" style="margin-top:1.25rem">
+        <button class="btn-secondary" onclick="app.send('BACK')">← Back</button>
+        <button class="btn-success" onclick="app.send('SUBMIT')">Create Account ✓</button>
+      </div>
+    </div>
+
+    <!-- Complete -->
+    <div data-view="complete" id="view-complete">
+      <div class="check">✅</div>
+      <h1 style="text-align:center">Account Created!</h1>
+      <p style="text-align:center;color:#718096;margin-top:.5rem">
+        Welcome, <span data-model="name"></span>. Your <strong data-model="plan"></strong> plan is active.
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createAppState } from '../src/spirit.js'
+
+    const app = createAppState({
+      id: 'wizard',
+      initial: 'step1',
+      context: { name: '', email: '', plan: '' },
+      states: {
+        step1: {
+          on: {
+            SET_NAME:  { actions: (ctx, e) => { ctx.name = e.name } },
+            SET_EMAIL: { actions: (ctx, e) => { ctx.email = e.email } },
+            NEXT: {
+              target: 'step2',
+              guard: (ctx) => ctx.name.trim().length > 0 && ctx.email.includes('@'),
+            },
+          },
+        },
+        step2: {
+          on: {
+            SET_PLAN: { actions: (ctx, e) => { ctx.plan = e.plan } },
+            BACK: 'step1',
+            NEXT: {
+              target: 'step3',
+              guard: (ctx) => ctx.plan.length > 0,
+            },
+          },
+        },
+        step3: {
+          on: {
+            BACK: 'step2',
+            SUBMIT: 'complete',
+          },
+        },
+        complete: {},
+      },
+    })
+
+    // Step order for progress tracking
+    const stepOrder = ['step1', 'step2', 'step3', 'complete']
+
+    app.subscribe((state) => {
+      const idx = stepOrder.indexOf(state.value)
+
+      // Views
+      document.querySelectorAll('[data-view]').forEach((el) => {
+        el.classList.toggle('visible', el.dataset.view === state.value)
+      })
+
+      // Step number
+      document.getElementById('stepNum').textContent = Math.min(idx + 1, 3)
+
+      // Progress dots
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById('p' + i)
+        dot.className = 'step'
+        if (i - 1 < idx) dot.classList.add('done')
+        else if (i - 1 === idx) dot.classList.add('current')
+      }
+
+      // Validation hints on step1
+      if (state.value === 'step1') {
+        document.getElementById('name').value = state.context.name
+        document.getElementById('email').value = state.context.email
+      }
+      if (state.value === 'step2') {
+        document.getElementById('plan').value = state.context.plan
+      }
+    })
+
+    app.start()
+    window.app = app
+
+    window.setField = (eventType, field, value) => {
+      app.send({ type: eventType, [field]: value })
+      // Clear validation messages on input
+      const vEl = document.getElementById('v-' + field)
+      if (vEl) vEl.textContent = ''
+    }
+
+    // Show validation hints when NEXT is blocked
+    const origSend = app.send.bind(app)
+    app.send = function (event) {
+      const eventType = typeof event === 'string' ? event : event.type
+      const before = app.getState().value
+
+      origSend(event)
+
+      // If we tried NEXT but didn't move, show validation
+      if (eventType === 'NEXT' && app.getState().value === before) {
+        const ctx = app.getState().context
+        if (before === 'step1') {
+          if (!ctx.name.trim()) document.getElementById('v-name').textContent = 'Name is required'
+          if (!ctx.email.includes('@')) document.getElementById('v-email').textContent = 'Valid email required'
+        }
+        if (before === 'step2') {
+          if (!ctx.plan) document.getElementById('v-plan').textContent = 'Please select a plan'
+        }
+      }
+
+      return app
+    }
+  </script>
+</body>
+</html>
